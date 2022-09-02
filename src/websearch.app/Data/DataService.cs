@@ -17,21 +17,25 @@ public class DataService
         _googleDataService = googleDataService;
     }
 
-    public async Task RunWebSearch(string searchTerm)
+    public async Task<Guid> RunWebSearch(string searchTerm)
     {
         var searchResponse = await _googleDataService.RunGoogleSearch(searchTerm);
         if (searchResponse == null)
             throw new DataServiceException("Failed to perform Google search");
 
         var searchResults = searchResponse.Items.ToArray();
-        await StoreSearchResultsAsync(searchTerm, searchResults);
+        return await StoreSearchResultsAsync(searchTerm, searchResults);
     }
 
-    public IEnumerable<dynamic> GetWebSearchResults(string? filterTerm, int limit = 10, int offset = 0, DataOrder sortOrder = DataOrder.ByDataCreatedDescending)
+    public IEnumerable<dynamic> GetWebSearchResults(string? rel, string? filterTerm, int limit = 10, int offset = 0, DataOrder sortOrder = DataOrder.ByDataCreatedDescending)
     {
+        Guid? relId = rel != null
+            ? Guid.Parse(rel) : null;
+
         var query =
             from search in _dbContext.WebSearches
             join result_set in _dbContext.WebSearchResultSets on search.Id equals result_set.WebSearch.Id
+            where rel == null || result_set.RelId == relId
             select new { Search = search, Results = result_set.WebSearchResults };
 
         query =
@@ -48,17 +52,19 @@ public class DataService
         return mappedQuery;
     }
 
-    private async Task StoreSearchResultsAsync(string searchTerm, Item[] searchResults)
+    private async Task<Guid> StoreSearchResultsAsync(string searchTerm, Item[] searchResults)
     {
         var now = DateTimeOffset.Now;
         var search = new WebSearch() { Query = searchTerm, Created = now };
         var searchResultsM = searchResults.Select(r => new WebSearchResult() { Url = r.FormattedUrl, Title = r.Title, Created = now }).ToList();
-        var searchResultsSet = new WebSearchResultSet() { WebSearch = search, WebSearchResults = searchResultsM };
+        var searchResultsSet = new WebSearchResultSet() { WebSearch = search, WebSearchResults = searchResultsM, RelId = Guid.NewGuid() };
 
         await _dbContext.WebSearches.AddAsync(search);
         await _dbContext.WebSearchResults.AddRangeAsync(searchResultsM);
         await _dbContext.WebSearchResultSets.AddAsync(searchResultsSet);
         await _dbContext.SaveChangesAsync();
+
+        return searchResultsSet.RelId;
     }
 }
 

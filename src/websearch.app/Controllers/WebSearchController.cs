@@ -7,14 +7,14 @@ public class WebSearchController : ControllerBase
     public WebSearchController(DataService dataService) => _dataService = dataService;
 
     [Route("/query-results")][HttpGet]
-    public IActionResult GetResults(string? filterTerm = null, int? limit = 10, int? offset = 0, bool ascending = false)
+    public IActionResult GetResults(string? rel = null, string? filterTerm = null, int? limit = 10, int? offset = 0, bool ascending = false)
     {
         var order = ascending
             ? DataOrder.ByDateCreatedAscending
             : DataOrder.ByDataCreatedDescending;
 
         var queryResult =
-            _dataService.GetWebSearchResults(filterTerm, limit!.Value, offset!.Value, order);
+            _dataService.GetWebSearchResults(rel, filterTerm, limit!.Value, offset!.Value, order);
 
         return new JsonResult(queryResult.ToArray());
     }
@@ -22,7 +22,7 @@ public class WebSearchController : ControllerBase
     [Route("/query")][HttpGet]
     public async Task<IActionResult> QueryAsync([FromQuery] string webSearch)
     {
-        await _dataService.RunWebSearch(webSearch);
-        return Redirect("https://localhost:44481/results");
+        var relId = await _dataService.RunWebSearch(webSearch);
+        return Redirect($"https://localhost:44481/results?rel={relId}");
     }
 }

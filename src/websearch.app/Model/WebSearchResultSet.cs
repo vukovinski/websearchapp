@@ -4,6 +4,7 @@ namespace websearch.app;
 public class WebSearchResultSet
 {
     public int Id { get; set; }
+    public Guid RelId { get; set; }
     public WebSearch WebSearch { get; set; }
     public List<WebSearchResult> WebSearchResults { get; set; }
 }
