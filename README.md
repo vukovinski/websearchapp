@@ -7,6 +7,8 @@
 
 ## How to run
 
+Configure database!
+
 ```powershell
 cd src\websearch.app
 dotnet run
